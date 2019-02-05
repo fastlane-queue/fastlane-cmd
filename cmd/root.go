@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/fastlane-queue/fastlane-cmd/config"
 	"github.com/logrusorgru/aurora"
@@ -37,9 +41,52 @@ var RootCmd = &cobra.Command{
 	Long:  `Use fastlane-cmd to easily run jobs in fastlane.`,
 }
 
+func getLastRelease() map[string]interface{} {
+	url := "https://api.github.com/repos/fastlane-queue/fastlane-cmd/releases"
+	var netClient = &http.Client{
+		Timeout: time.Second * 10,
+	}
+
+	resp, _ := netClient.Get(url)
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println(au.Red("Failed to verify if there's a new version of fastlane-cmd."), err)
+			return nil
+		}
+		var result []interface{}
+		err = json.Unmarshal(bodyBytes, &result)
+		if err != nil {
+			fmt.Println(au.Red("Failed to verify if there's a new version of fastlane-cmd."), err)
+			return nil
+		}
+		if len(result) == 0 {
+			return nil
+		}
+		return result[0].(map[string]interface{})
+	}
+
+	fmt.Println(
+		au.Sprintf(
+			au.Red("Failed to verify if there's a new version of fastlane-cmd (Status Code: %d)."), resp.StatusCode,
+		),
+	)
+	return nil
+}
+
+func checkUpdate() {
+	lastRelease := getLastRelease()
+	if lastRelease == nil {
+		return
+	}
+}
+
 // Execute runs RootCmd to initialize fastlane-cmd CLI application
 func Execute(cmd *cobra.Command) {
 	au = aurora.NewAurora(!NoColors)
+	checkUpdate()
 
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
