@@ -3,11 +3,17 @@
 # Copyright (c) 2018, Backstage <backstage@corp.globo.com>
 
 COMPOSE := $(shell command -v docker-compose 2> /dev/null)
+YARN := $(shell command -v yarn 2> /dev/null)
 
 setup:
 	@go get -u github.com/wadey/gocovmerge
 	@go get -u github.com/onsi/ginkgo
 	@dep ensure
+ifdef YARN
+	@yarn install
+else
+	@npm install
+endif
 
 build:
 	@go build $(PACKAGES)
