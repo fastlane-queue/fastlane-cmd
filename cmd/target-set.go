@@ -15,7 +15,7 @@ var targetSetCommand = &cobra.Command{
 	Short: "sets the specified target",
 	Long:  `target set specifies a target (new or existing) details`,
 	Run: func(cmd *cobra.Command, args []string) {
-		InitLog()
+		Initialize()
 
 		if len(args) < 2 {
 			fmt.Println(au.Red("Invalid input. `target set` must be called with a name and base URL, like so:\n"))

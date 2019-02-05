@@ -22,7 +22,8 @@ func NewConfig() (*Config, error) {
 	var config *Config
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		config = &Config{
-			Hosts: map[string]*Host{},
+			Hosts:           map[string]*Host{},
+			LastUpdateCheck: 0,
 		}
 		err := config.Serialize()
 		if err != nil {
@@ -51,8 +52,9 @@ type Host struct {
 
 //Config loads or creates a configuration in the user's home
 type Config struct {
-	Hosts         map[string]*Host
-	DefaultTarget string
+	Hosts           map[string]*Host
+	DefaultTarget   string
+	LastUpdateCheck int64
 }
 
 //List all the configured servers

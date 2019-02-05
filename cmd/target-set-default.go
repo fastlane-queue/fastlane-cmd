@@ -13,7 +13,7 @@ var targetSetDefaultCommand = &cobra.Command{
 	Short: "sets the default target",
 	Long:  `target set-default specifies a target to be the default`,
 	Run: func(cmd *cobra.Command, args []string) {
-		InitLog()
+		Initialize()
 
 		if len(args) < 1 {
 			fmt.Println(au.Red("Invalid input. `target set-default` must be called with a target name:\n"))

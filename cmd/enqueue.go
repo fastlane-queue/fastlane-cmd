@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +12,9 @@ var enqueueCommand = &cobra.Command{
 	Short: "enqueue a new job in fastlane",
 	Long:  `Enqueues a new job in fastlane with the specified options`,
 	Run: func(cmd *cobra.Command, args []string) {
-		InitLog()
+		Initialize()
 		Log.Info("Enqueuing job...")
+		fmt.Println("woot!")
 		err := Config.UpdateLastUsed("main")
 		if err != nil {
 			panic(err)

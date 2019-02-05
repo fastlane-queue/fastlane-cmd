@@ -1,13 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
+	"log"
 	"os"
 	"time"
 
+	"github.com/blang/semver"
 	"github.com/fastlane-queue/fastlane-cmd/config"
 	"github.com/logrusorgru/aurora"
 	"github.com/sirupsen/logrus"
@@ -15,7 +14,7 @@ import (
 )
 
 // Version of this package
-var Version = "0.1.0"
+var Version = "0.0.1"
 
 // Config is the local user configurations for fastlane-cmd
 var Config *config.Config
@@ -29,6 +28,9 @@ var Verbose int
 // JSONLogFormat indicates that logs should be JSON
 var JSONLogFormat bool
 
+// SkipAutoUpdate indicates that auto-update should not be used
+var SkipAutoUpdate bool
+
 // NoColors indicates that logs should be JSON
 var NoColors bool
 
@@ -39,58 +41,103 @@ var RootCmd = &cobra.Command{
 	Use:   "fastlane-cmd",
 	Short: "fastlane-cmd runs jobs in fastlane",
 	Long:  `Use fastlane-cmd to easily run jobs in fastlane.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if cmd.Use == "fastlane-cmd" {
+			os.Exit(0)
+			return
+		}
+
+		if err := cmd.Execute(); err != nil {
+			fmt.Println(err)
+			os.Exit(-1)
+		}
+	},
 }
 
-func getLastRelease() map[string]interface{} {
-	url := "https://api.github.com/repos/fastlane-queue/fastlane-cmd/releases"
-	var netClient = &http.Client{
-		Timeout: time.Second * 10,
+// posString returns the first index of element in slice.
+// If slice does not contain element, returns -1.
+func posString(slice []string, element string) int {
+	for index, elem := range slice {
+		if elem == element {
+			return index
+		}
 	}
+	return -1
+}
 
-	resp, _ := netClient.Get(url)
-	defer resp.Body.Close()
+// containsString returns true iff slice contains element
+func containsString(slice []string, element string) bool {
+	return !(posString(slice, element) == -1)
+}
 
-	if resp.StatusCode == http.StatusOK {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			fmt.Println(au.Red("Failed to verify if there's a new version of fastlane-cmd."), err)
-			return nil
-		}
-		var result []interface{}
-		err = json.Unmarshal(bodyBytes, &result)
-		if err != nil {
-			fmt.Println(au.Red("Failed to verify if there's a new version of fastlane-cmd."), err)
-			return nil
-		}
-		if len(result) == 0 {
-			return nil
-		}
-		return result[0].(map[string]interface{})
+func askForConfirmation() bool {
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	fmt.Println(
-		au.Sprintf(
-			au.Red("Failed to verify if there's a new version of fastlane-cmd (Status Code: %d)."), resp.StatusCode,
-		),
-	)
-	return nil
+	okayResponses := []string{"y", "Y", "yes", "Yes", "YES"}
+	nokayResponses := []string{"n", "N", "no", "No", "NO"}
+	if containsString(okayResponses, response) {
+		return true
+	} else if containsString(nokayResponses, response) {
+		return false
+	} else {
+		fmt.Println("Please type yes or no and then press enter:")
+		return askForConfirmation()
+	}
 }
 
 func checkUpdate() {
+	since := time.Now().Unix() - Config.LastUpdateCheck
+	if since > 0 && since < 300 {
+		return
+	}
+
 	lastRelease := getLastRelease()
 	if lastRelease == nil {
 		return
 	}
+	curr, err := semver.Make(Version)
+	if err != nil {
+		return
+	}
+	if lastRelease.Version.GT(curr) {
+		fmt.Println(au.Sprintf(
+			"Current version (%s) is obsolete.\nThere is a new version "+
+				"available (%s).\nDo you want to update? [y/n]", au.Red(Version),
+			au.Bold(lastRelease.Version),
+		))
+
+		if askForConfirmation() {
+			doUpdate(lastRelease)
+		}
+	}
+
+	Config.LastUpdateCheck = time.Now().Unix()
+	err = Config.Serialize()
+	if err != nil {
+		return
+	}
+}
+
+func doUpdate(release *Release) {
+	fmt.Println("updating...")
 }
 
 // Execute runs RootCmd to initialize fastlane-cmd CLI application
 func Execute(cmd *cobra.Command) {
-	au = aurora.NewAurora(!NoColors)
-	checkUpdate()
-
 	if err := cmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
+	}
+}
+
+func Initialize() {
+	InitLog()
+	au = aurora.NewAurora(!NoColors)
+	if !SkipAutoUpdate {
+		checkUpdate()
 	}
 }
 
@@ -102,9 +149,7 @@ func PrintTitle(title string, showVersion bool) {
 	}
 
 	if title != "" {
-		// sep := strings.Repeat("-", utf8.RuneCountInString(title))
 		fmt.Println(au.Bold(title))
-		// fmt.Println(sep)
 	}
 }
 
@@ -122,6 +167,11 @@ func init() {
 	RootCmd.PersistentFlags().BoolVarP(
 		&NoColors, "no-colors", "c", false,
 		"Don't show colored output",
+	)
+
+	RootCmd.PersistentFlags().BoolVarP(
+		&SkipAutoUpdate, "skip-auto-update", "s", false,
+		"Don't check if update is available",
 	)
 
 	var err error

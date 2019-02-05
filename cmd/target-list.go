@@ -10,7 +10,7 @@ var targetListCommand = &cobra.Command{
 	Short: "lists all the configured targets",
 	Long:  `target list returns all the configured targets for the current user`,
 	Run: func(cmd *cobra.Command, args []string) {
-		InitLog()
+		Initialize()
 
 		PrintTitle("Available Targets", true)
 
@@ -19,8 +19,5 @@ var targetListCommand = &cobra.Command{
 }
 
 func init() {
-	// enqueueCommand.Flags().StringVarP(&startHost, "bind", "b", "0.0.0.0", "Host to bind wall to")
-	// enqueueCommand.Flags().IntVarP(&startPort, "port", "p", 3001, "Port to bind wall http server to")
-
 	targetCommand.AddCommand(targetListCommand)
 }
