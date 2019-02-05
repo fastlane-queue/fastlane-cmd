@@ -12,6 +12,10 @@ var enqueueCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		InitLog()
 		Log.Info("Enqueuing job...")
+		err := Config.UpdateLastUsed("main")
+		if err != nil {
+			panic(err)
+		}
 	},
 }
 

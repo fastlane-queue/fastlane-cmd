@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"os"
-
-	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
@@ -15,15 +12,9 @@ var targetListCommand = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		InitLog()
 
-		PrintTitle("Available Targets")
+		PrintTitle("Available Targets", true)
 
-		var hosts = Config.List()
-		table := tablewriter.NewWriter(os.Stdout)
-		for _, host := range hosts {
-			table.Append([]string{host.Name, host.URL})
-		}
-		table.SetHeader([]string{"Target Name", "Base URL"})
-		table.Render()
+		PrintTargets()
 	},
 }
 
